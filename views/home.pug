@@ -1,0 +1,19 @@
+extends layout
+
+block content
+  h1 uPort web app
+  p.lead An application to test uPort login and attestation functionality.
+  hr
+  .row
+    .col-sm-6
+      h2 Login
+      p Click the login link and scan the QR code using your uPort mobile app
+      p
+        button(type='button' class='btn btn-info btn-lg' onClick='getLogin()') Login
+  .row
+    .col-sm-6
+        h2 QR Code
+        div#qrcode
+            
+
+        
