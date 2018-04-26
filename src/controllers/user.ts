@@ -1,7 +1,5 @@
-import * as crypto from "crypto"
 import * as nodemailer from "nodemailer"
 import { Request, Response, NextFunction } from "express"
-import { IVerifyOptions } from "passport-local"
 import { Credentials, SimpleSigner, Token } from "uport"
 import * as uuid from 'uuid'
 import * as util from 'util'
@@ -84,14 +82,6 @@ export class RESTServer {
         }
     };
 
-    getSignup (req: Request, res: Response) {
-        if (req.user) {
-            return res.redirect("/");
-        }
-        res.render("account/signup", {
-            title: "Create Account"
-        });
-    };
 
     postSignup(req: Request, res: Response, next: NextFunction) {
         req.assert("email", "Email is not valid").isEmail();

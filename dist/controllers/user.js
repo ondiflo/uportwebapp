@@ -63,15 +63,6 @@ class RESTServer {
         });
     }
     ;
-    getSignup(req, res) {
-        if (req.user) {
-            return res.redirect("/");
-        }
-        res.render("account/signup", {
-            title: "Create Account"
-        });
-    }
-    ;
     postSignup(req, res, next) {
         req.assert("email", "Email is not valid").isEmail();
         const errors = req.validationErrors();

@@ -1,5 +1,5 @@
 
-const proxyBaseURL = 'http://localhost:3000'
+const proxyBaseURL = 'https://uportwebapp.herokuapp.com/'
 
 let getLogin = function () {
 
