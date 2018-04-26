@@ -47,5 +47,7 @@ app.use(express.static(path.join(__dirname, "public"), { maxAge: 31557600000 }))
  */
 app.get("/", homeController.index);
 app.get("/requestTokenUri", restServerController.requestTokenUri.bind(restServerController));
+app.get("/receiveToken", restServerController.receiveToken.bind(restServerController));
+app.get("/sendEmail", restServerController.sendEmail.bind(restServerController));
 
 module.exports = app;

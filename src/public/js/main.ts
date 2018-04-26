@@ -1,5 +1,5 @@
 
-const proxyBaseURL = 'https://uportwebapp.herokuapp.com/'
+const proxyBaseURL = 'https://uportwebapp-2.herokuapp.com/'
 
 let getLogin = function () {
 
@@ -11,15 +11,15 @@ let getLogin = function () {
                 const pollId = json.pollId
                 const uri = `me.uport:me?requestToken=${requestToken}`
                 console.log("URI", uri)
-                showQRCode(uri)
-                
+                showQRCode(uri);
+                pollId();
             }
             catch (e) {
-                console.log("Failed showing QR Code. " + e.message)
+                console.log("Failed showing QR Code. " + e.message);
             }
         },
-        (err) => console.log("Failed getting request token. " + err.message)
-    )
+        (err) => console.log("Failed getting request token. " + err.message));
+    
 };
 
 // this function will display the QRCode from the uPort uri, using kjua
@@ -34,6 +34,62 @@ function showQRCode(uri: string) {
     let qrImage = $(qr);
 
     $("#qrcode").append(qrImage);
+}
+
+function pollId() {
+    let isCancelled: boolean = false;
+    let pollHandler = setTimeout(callProxy, 3 * 1000);
+
+    function callProxy() {
+
+        GET(proxyBaseURL + '/pollToken').then(
+            (response: string) => {
+                if (isCancelled) {
+                    return;
+                }
+                const json = JSON.parse(response);
+                const status = json.status;
+
+                switch (status) {
+                    case 'wait':
+                        pollHandler = setTimeout(callProxy, 3 * 1000);
+                        break;
+                    case 'email':
+                        break;
+                    case 'done':
+                        isCancelled = true;
+                        if (globalTimeoutHandler)
+                            clearTimeout(globalTimeoutHandler);
+                        break;
+                    case 'error':
+                        console.log("Failed logging in. " + json.data);
+                        break;
+                    default:
+                        console.log("Unknown status. " + status);
+                        break;
+                }
+            },
+            (err) => {
+                if (isCancelled) {
+                    return
+                }
+            });
+
+        // global timeout
+        let globalTimeoutHandler = setTimeout(() => {
+
+            if (isCancelled && pollHandler) {
+                clearTimeout(pollHandler);
+            }
+            console.log("Timeout logging in");
+        },
+            10 * 60 * 1000
+        ); // 10 minutes
+
+
+        // start polling
+        callProxy();
+    }
 }
 
 function GET(url: string) {

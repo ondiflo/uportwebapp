@@ -1,12 +1,16 @@
 {
   "ExpandedNodes": [
     "",
+    "\\dist\\public",
+    "\\dist\\public\\js",
     "\\src",
     "\\src\\controllers",
+    "\\src\\public",
+    "\\src\\public\\js",
     "\\views",
     "\\views\\account",
     "\\views\\partials"
   ],
-  "SelectedNode": "\\src\\app.ts",
+  "SelectedNode": "\\src\\public\\js\\main.ts",
   "PreviewInSolutionExplorer": false
 }

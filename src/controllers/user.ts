@@ -10,12 +10,10 @@ import * as qrcode from 'qrcode'
 
 const request = require("express-validator");
 
-type CacheEntry = {
-    requestToken: string,
-    expiry: number,
-    responseToken?: Token,
-    needEmail?: boolean,
-    error?: string
+class CacheEntry {
+    requestToken: string;
+    responseToken: Token;
+    creds: any;
 }
 
 export class Logger {
@@ -28,12 +26,11 @@ export class RESTServer {
     private emailTransport: nodemailer.Transporter;
     private logger: Logger;
     private uport: Credentials;
-    private uportCache: { [id: string]: CacheEntry } = {}
+    private uportCache: CacheEntry = new CacheEntry();
 
     constructor(emailTransport: nodemailer.Transporter, logger: Logger) {
         this.emailTransport = emailTransport
         this.logger = logger
-        this.uportCache = {}
         this.uport = new Credentials(
             {
                 appName: 'Platform 6 Dev',
@@ -59,7 +56,7 @@ export class RESTServer {
                     {
                         requested: ['platform6'],
                         verified: ['platform6'],
-                        callbackUrl: "http://localhost:3000/receiveToken?id=" + encodeURIComponent(id),
+                        callbackUrl: "http://uportwebapp-2/receiveToken?id=" + encodeURIComponent(id),
                         notifications: true
                     }
                 ).catch((error) => {
@@ -68,71 +65,73 @@ export class RESTServer {
 
 
             console.log("===Request Token:", requestToken);
-            const pollId = this.addToUPortCache(id, String(requestToken));
 
             res.send({
-                requestToken: requestToken,
-                pollId: pollId
+                error: "success",
+                requestToken: requestToken
             });
             
         }
         catch (e) {
             console.log(0, "Failed while requesting token. " + e.message, e.stack);
-            this.replyRestError(500, "Failed hile requesting token. " + e.message, res);
+            res.send({
+                error: e.message
+            });
         }
     };
 
+    public async receiveToken(req: Request, res: Response) {
+        // try parsing the response ans send 200 ASAP
+        let id: string
+        let access_token: Token
 
-    postSignup(req: Request, res: Response, next: NextFunction) {
-        req.assert("email", "Email is not valid").isEmail();
-
-        const errors = req.validationErrors();
-
-        if (errors) {
-            req.flash("errors", errors);
-            return res.redirect("/signup");
+        try {
+            
+            access_token = JSON.parse(req.body)['access_token'];
         }
-    };
+        catch (e) {
+            res.send({
+                error: "Error acessing token"
+            });
 
-    private replyRestJson(code: number, data: object, res: Response): void {
-        res.writeHead(code, { 'Access-Control-Allow-Origin': '*', 'Content-type': 'application/json' })
-        res.write(JSON.stringify(data))
-        res.end()
+            return;
+        }
+
+        // process the received access_token
+        try {
+            const token: Token = await this.uport.receive(access_token);
+            console.log("TOKEN", token);
+            // check credentials on the token
+            const creds = await this.uport.lookup(token.address);
+            console.log("CREDS", creds);
+
+            this.uportCache.creds = creds;
+        }
+        catch (e) {
+            const msg = "Failed processing access_token. " + e.message;
+            this.logger.log(0, msg, e.stack);
+        }
     }
 
-    private replyRestError(code: number, message: string, res: Response): void {
-        res.writeHead(code, { 'Access-Control-Allow-Origin': '*' })
-        res.write(`Error. ${message}`)
-        res.end()
+    public async sendEmail(req: Request, res: Response) {
+
+        try {
+            const body = JSON.parse(request.body);
+            const email = body['email'] as string;
+
+            const attestation = await this.uport.attest(
+                {
+                    sub: '0x' + this.uportCache.responseToken.address, // uport address of user
+                    exp: new Date().getTime() / 1000 + 2 * 60, // If your information is not permanent make sure to add an expires timestamp
+                    claim: { platform6: email }
+                });
+        }
+        catch (error) {
+            
+        }
     }
 
-    private addToUPortCache (id: string, requestToken: string): string {
-            this.gcUPortCache()
-            const time = new Date().getTime() + 30 * 60 * 1000;
-            this.uportCache[id] = { requestToken: requestToken, expiry: time }
-            return id
-    }
-
-    private getFromUPortCache(id: string): CacheEntry {
-            const entry = this.uportCache[id]
-            if (!entry) {
-                return void 0
-            }
-            if (entry.expiry <= new Date().getTime()) {
-                return void 0
-            }
-            return entry
-    }
-
-    private gcUPortCache() {
-        const time = new Date().getTime()
-        Object.keys(this.uportCache).forEach(id => {
-            const v = this.uportCache[id]
-            if (v.expiry <= time) {
-                delete this.uportCache[id]
-            }
-        })
-    }
+  
 }
 
 
